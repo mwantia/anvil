@@ -1,0 +1,30 @@
+version: '3'
+
+env:
+    CGO_ENABLED: '0'
+    GOOS: linux
+    BUILD_PATH: ./build/anvil
+
+tasks:
+    default:
+        desc: List all available tasks
+        cmds:
+        - task --list
+        silent: true
+
+    setup:
+        desc: Download and tidy Go module dependencies
+        cmds:
+        - go mod download
+        - go mod tidy
+
+    build:
+        desc: Compile anvil to ./build/anvil
+        cmds:
+        - go build -ldflags '-s -w' -o ${BUILD_PATH} ./cmd/main.go
+
+    run:
+        desc: Build and run anvil (uses FORGE_ADDRESS and FORGE_TOKEN env vars)
+        cmds:
+        - task: build
+        - ${BUILD_PATH}
