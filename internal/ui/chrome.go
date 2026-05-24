@@ -9,7 +9,7 @@ import (
 
 // TermBar renders the top window chrome.
 func TermBar(s Styles, w int, screenLabel string) string {
-	dot := lipgloss.NewStyle().Foreground(AccentAmber).Render("●")
+	dot := lipgloss.NewStyle().Foreground(s.ColAccent).Render("●")
 	name := lipgloss.NewStyle().Bold(true).Foreground(ColFg).Render("anvil")
 	path := s.Faint.Render(screenLabel + " · ~/forge")
 
@@ -19,8 +19,10 @@ func TermBar(s Styles, w int, screenLabel string) string {
 	return s.TermBar.Width(w).Render(pad(left, right, w-2))
 }
 
-// TabBar renders the 1-5 hotkey tab strip.
-func TabBar(s Styles, w int, active int, screenNames []string, sessionName, headRef string) string {
+// TabBar renders the 1-3 hotkey tab strip. The right side shows the forge
+// daemon address and a health indicator instead of session/HEAD state
+// (that information is already present in the StatusBar).
+func TabBar(s Styles, w int, active int, screenNames []string, address, health string) string {
 	var parts []string
 	for i, n := range screenNames {
 		st := s.Tab
@@ -32,7 +34,7 @@ func TabBar(s Styles, w int, active int, screenNames []string, sessionName, head
 	}
 
 	tabs := lipgloss.JoinHorizontal(lipgloss.Bottom, parts...)
-	right := s.Faint.Render("session") + "\t" + s.Accent.Render(sessionName) + "\t" + s.ChipAcc.Render(headRef)
+	right := s.Faint.Render("forge") + " " + s.Muted.Render(address) + " " + health
 
 	return pad(tabs, right, w-2)
 }
