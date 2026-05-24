@@ -6,25 +6,23 @@ This document captures the current layout, palette, and component conventions fo
 
 ## Layout skeleton
 
-> User: Let's remove `session <name>  [HEAD→main]` from the **TabBar** - We already have the same state in the **StatusBar**, creating two areas with the same content.
-> We can replace this with: `forge <address> <health-state>` to indicate the current connection.
-
 ```
 ┌─ TermBar ────────────────────────────────────────────────────────────────────┐
 │ ● anvil  forge <screen-label> · ~/forge                go 1.22 · bubbletea   │
 ├─ TabBar ─────────────────────────────────────────────────────────────────────┤
-│   1 sessions   2 resources   3 system          session <name>  [HEAD→main]   │
+│   1 sessions   2 resources   3 system          forge <address> <health>      │
 │                                                                              │
 │  <body — varies per screen>                                                  │
 │                                                                              │
 ├─ KeyHints ───────────────────────────────────────────────────────────────────┤
-│ ↑↓ select   enter log   tab branches   n new   c clone   …   1-3 tab  q quit │
+│ ↑↓ select   enter log   →/d expand   ←  collapse   K/J all   …   1-3 tab  q │
 ├─ StatusBar (amber) ──────────────────────────────────────────────────────────┤
 │   anvil v…   session <name>   HEAD main                            15:04:05  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Chrome pieces live in `chrome.go`. Heights are computed in `app.go:View()` and the body is clipped/padded to fill exactly `height − chromeH` lines via `fitLines`.
+- **TabBar right side**: `forge <address> <health>` — `●` (green) when agent HTTP is reachable, `○` (faint) otherwise.
+- Chrome pieces live in `chrome.go`. Heights are computed in `app.go:View()` and the body is clipped/padded to fill exactly `height − chromeH` lines via `fitLines`.
 
 ---
 
@@ -32,46 +30,53 @@ Chrome pieces live in `chrome.go`. Heights are computed in `app.go:View()` and t
 
 ### 1 · Sessions (`ScreenSessions`)
 
-Split layout, 55 % top / 45 % bottom:
-
-> User: Currently `sessions [N]` and `<session-name>` aren't sized correctly (both having separate heights).
-> I want to make both layouts uniform to each other and turn ``sessions [N]` into a list/table that supports groups.
-> Each session can be expanded (by using `→` or `d`) to list down all existing refs for this session.
-> These can be collapsed by using `←` or `d` (toggles). Using the hotkey `k` expands all sessions listed (Using `j` collapses all again)
-> With this change, we should be able to remove `refs [N]`, `dag · log` and `<ref>` completely (most is now compacted into `sessions [N]`).
-> The additional information about the selected ref (e.g. `<ref>`) can be added to `<session-name>` at the bottom as dedicated group or combined with the already existing info.
+Side-by-side layout: 70 % left (session tree) / 30 % right (detail panel).
 
 ```
-┌─ sessions [N] ─────────────────────────────────┐  ┌─ <session-name> ──────┐
-│ ID           NAME    TITLE   PLUGINS MSGS UPD  │  │ ID       <hash>       │
-│ ────────────────────────────────────────────── │  │ Name     <name>       │
-│ <selected row> …                               │  │ Title    …            │
-│  <dim row> …                                   │  │ Model    …            │
-└────────────────────────────────────────────────┘  │ Parent   …            │
-┌─ refs [N] ──────────┐  ┌─ dag · log ───────────┐  │ Created  …            │
-│ HEAD → main         │  │ *  <hash>  HEAD,main  │  │ Updated  …            │
-│ main                │  │ *  <hash>  …          │  │                       │
-│ fork-abc            │  │ …                     │  │ MESSAGES · N          │
-│ ──────────────────  │  └───────────────────────┘  │   user        ██░░ 3  │
-│ c checkout  b branch│  ┌─ <ref> ───────────────┐  │   assistant   ███░ 4  │
-│ m merge     x delete│  │ ref    …              │  │   tool_call   █░░░ 1  │
-└─────────────────────┘  │ hash   …              │  │   tool_result █░░░ 1  │
-                         │ type   …              │  │                       │
-                         │ ACTIONS               │  │ COST                  │
-                         │ c checkout  b branch  │  │ Estimated  $0.0014    │
-                         └───────────────────────┘  │ Tokens  in=… out=…    │
-                                                    └───────────────────────┘
+┌─ sessions [N] ────────────────────────────────────────────────────────────────┐  ┌─ <session-name> ──┐
+│   ID         NAME           TITLE              PLUGINS MSGS  UPDATED          │  │ ID       <hash>   │
+│ ───────────────────────────────────────────────────────────────────────────── │  │ Name     <name>   │
+│ ▸ <id>       <name>         <title>            <plug>   12  2006-01-02 15:04  │  │ Title    …        │
+│ ▾ <id>       <name>         <title>            <plug>    4  2006-01-02 15:04  │  │ Model    …        │
+│     ·  <hash>       HEAD → main                                               │  │ Parent   …        │
+│     ·  <hash>       main                                                      │  │ Created  …        │
+│     ·  <hash>       fork-abc123                                               │  │ Updated  …        │
+│ ▸ <id>       <name>         <title>            <plug>    1  2006-01-02 15:04  │  │                   │
+└───────────────────────────────────────────────────────────────────────────────┘  │ MESSAGES · N      │
+                                                                                   │   user     ██░ 3  │
+                                                                                   │   assistant ███ 4 │
+                                                                                   │   tool_call █░░ 1 │
+                                                                                   │   tool_result …   │
+                                                                                   │                   │
+                                                                                   │ COST              │
+                                                                                   │ Estimated $0.0014 │
+                                                                                   │ Tokens in=… out=… │
+                                                                                   │                   │
+                                                                                   │ REF (when on ref) │
+                                                                                   │ name  HEAD→main   │
+                                                                                   │ hash  <hash>      │
+                                                                                   │ type  symref      │
+                                                                                   └───────────────────┘
 ```
 
-- Left panel (70 % width): session table. Focused border when `!focusBranches`.
-- Right panel (30 % width): session detail with mini-bar charts for message counts.
-- Bottom: branches sub-panel, active when `focusBranches = true`. Three panes — refs list, DAG graph, ref detail — navigated with `←→` or `Tab`.
+**Tree behaviour:**
+- `▸` = collapsed, `▾` = expanded (Amber). Ref rows are indented with `·`.
+- `→` or `d` — expand selected session header; `←` — collapse (jumps to header if on a ref row first).
+- `d` on an expanded header — collapse; `d` on a ref row — collapse to parent.
+- `K` — expand all sessions; `J` — collapse all, cursor jumps to owning session header.
+- Unselected ref rows are fully faint (`ColFgFaint #4a5364`). Selected ref row: faint bullet+hash, colored ref label via `refLabel()`.
+- `Enter` on a session header — open log for HEAD. `Enter` on a ref row — open log walking that specific ref (non-HEAD refs only; HEAD rows pass empty ref string).
+- Right panel shows a **REF** section appended below COST when cursor is on a ref row.
+
+**Column widths:**
+- ID, NAME, PLUGINS, MSGS, UPDATED are fixed-width. TITLE expands to fill remaining space (`titleW = innerW − 66`, min 10).
+- Row style `Width(leftW−4)` sets **outer** rendered width; content area = `leftW−7` (border + padding consume 3 chars).
 
 ### 2 · Log (`ScreenLog`) — sub-screen of Sessions
 
 ```
 ┌─ log · <session> ────────────────────────────────────────────────┐
-│ <name> · <model> @ <HEAD>                                        │
+│ <name> · <model> @ <ref-or-HEAD>                                 │
 │ N messages   user=1 assistant=1 tool_call=1 tool_result=1        │
 │ tokens: in=…  out=…  total=…  cost=$…                            │
 ├─ messages [N] ──────────────┐  ┌─ <hash[0:12]> ──────────────────┤
@@ -85,9 +90,16 @@ Split layout, 55 % top / 45 % bottom:
 └─────────────────────────────┘  └─────────────────────────────────┘
 ```
 
-- Enter on a row: toggle expanded body (full `msg.Body` lines vs preview).
+- **`Enter`** — toggle expanded body (full `msg.Body` vs preview).
+- **Expanded rendering** (`renderBody` in `log.go`):
+  - `user` / `assistant`: rendered as **Markdown** via [glamour](https://github.com/charmbracelet/glamour), word-wrapped to panel width.
+  - `tool_call` / `tool_result`: content is JSON-pretty-printed (if valid), wrapped in a ` ```json ``` ` fence, then rendered by glamour (chroma syntax highlighting).
+  - Falls back to raw text on any render error.
+- **`⌫` (Backspace)** — return to Sessions screen.
 - `e` → EditFork on selected message hash.
 - `c` → Checkout to selected message hash.
+- `y` → Yank hash.
+- Header shows `@ <ref>` when walking a non-HEAD branch; the ref persists across edit/checkout actions via `logState.walkRef`.
 
 ### 3 · Resources (`ScreenResources`)
 
@@ -148,7 +160,7 @@ Two rows:
 | `ColBg`       | `#161d27` | App background                             |
 | `ColFg`       | `#e6e8eb` | Primary text                               |
 | `ColFgDim`    | `#8a93a3` | Secondary text, inactive rows              |
-| `ColFgFaint`  | `#4a5364` | Labels, borders, HR lines                  |
+| `ColFgFaint`  | `#4a5364` | Labels, borders, HR lines, unselected refs |
 | `ColRule`     | `#1f2731` | HR dividers                                |
 | `ColRule2`    | `#2a3340` | Empty bar fill, box borders                |
 | `AccentAmber` | `#f59e0b` | Active tab, selected row marker, highlights|
@@ -163,19 +175,20 @@ Role → color mapping: `user` → Amber, `assistant` → Dim, `tool_call` → I
 
 ## Components
 
-| Component  | File           | Notes                                                                 |
-|------------|----------------|-----------------------------------------------------------------------|
-| `Box`      | components.go  | Rounded border, optional title. `BoxFocused` swaps border to Amber.  |
-| `Row`/`RowSel` | theme.go   | Left-border glyph: `" "` (dim) vs `"▍"` (amber). Bg `#121920` on sel.|
-| `Chip`/`ChipAcc` | theme.go | Inline badges. ChipAcc = Amber fg + `#0e1a24` bg.                   |
-| `Hr`       | components.go  | `─` repeated, `ColRule` fg.                                           |
-| `KV`       | components.go  | `Faint(padRight(label, w)) + " " + value`.                           |
-| `Spark`    | components.go  | `▁▂▃▄▅▆▇█` sparkline from int slice.                                 |
-| `miniBar`  | sessions.go    | Inline horizontal bar: `█` (Amber) + `░` (ColRule2).                 |
-| `TermBar`  | chrome.go      | Top bar: dot + name + path left, runtime right.                       |
-| `TabBar`   | chrome.go      | Numbered tabs + session/HEAD context right.                           |
-| `StatusBar`| chrome.go      | Full-width Amber bg bar, bold. Flash messages prepend left side.      |
-| `KeyHints` | chrome.go      | `KeyCap key  KeyHint label` pairs, spaced.                            |
+| Component    | File           | Notes                                                                        |
+|--------------|----------------|------------------------------------------------------------------------------|
+| `Box`        | components.go  | Rounded border, optional title. `BoxFocused` swaps border to Amber.          |
+| `Row`/`RowSel` | theme.go     | Left-border glyph: `" "` (dim) vs `"▍"` (amber). Bg `#121920` on sel.      |
+| `Chip`/`ChipAcc` | theme.go   | Inline badges. ChipAcc = Amber fg + `#0e1a24` bg.                           |
+| `Hr`         | components.go  | `─` repeated, `ColRule` fg.                                                  |
+| `KV`         | components.go  | `Faint(padRight(label, w)) + " " + value`.                                   |
+| `Spark`      | components.go  | `▁▂▃▄▅▆▇█` sparkline from int slice.                                         |
+| `miniBar`    | sessions.go    | Inline horizontal bar: `█` (Amber) + `░` (ColRule2).                         |
+| `renderBody` | log.go         | Glamour markdown renderer; JSON roles get pretty-printed + fenced code block. |
+| `TermBar`    | chrome.go      | Top bar: dot + name + path left, runtime right.                               |
+| `TabBar`     | chrome.go      | Numbered tabs + `forge <address> <health>` right.                             |
+| `StatusBar`  | chrome.go      | Full-width Amber bg bar, bold. Flash messages prepend left side.              |
+| `KeyHints`   | chrome.go      | `KeyCap key  KeyHint label` pairs, spaced.                                    |
 
 ---
 
@@ -185,7 +198,6 @@ Role → color mapping: `user` → Amber, `assistant` → Dim, `tool_call` → I
 
 ### Open questions
 
-- [ ] Should the Sessions screen split branches into a dedicated top-level tab (tab 4), or keep the current bottom sub-panel activated by `Tab`?
 - [ ] Should `ScreenLog` remain a sub-screen (no tab number), or get its own tab? The current "tab 1 stays lit while in log" is a subtle convention.
 - [ ] Is the amber `StatusBar` the right primary accent, or should it be a subtler dark bar with amber text only?
 - [ ] Should `reloadAll()` poll on a timer, or remain manual (only reloads on navigation events)?
@@ -193,8 +205,6 @@ Role → color mapping: `user` → Amber, `assistant` → Dim, `tool_call` → I
 ### Planned changes
 
 <!-- Add items here as you identify them. Format: what, where, why. -->
-
-- **Example:** The branches DAG pane (`renderDag`) always renders a flat `* hash role` list — no actual branching lines. Replace with a real git-log-style graph when there are divergent refs.
 
 ### Design constraints
 
