@@ -13,6 +13,8 @@ type KeyMap struct {
 	Branch, Merge, Checkout, Diff     key.Binding
 	Yank, Filter, Follow              key.Binding
 
+	ExpandAll, CollapseAll key.Binding
+
 	Help, Quit key.Binding
 }
 
@@ -25,7 +27,7 @@ func DefaultKeys() KeyMap {
 		Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next pane")),
 		ShiftTab: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift-tab", "prev pane")),
 		Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-		Esc:      key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		Esc:      key.NewBinding(key.WithKeys("backspace"), key.WithHelp("bs", "back")),
 
 		Tab1: key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "sessions")),
 		Tab2: key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "resources")),
@@ -39,10 +41,13 @@ func DefaultKeys() KeyMap {
 		Branch:   key.NewBinding(key.WithKeys("b"), key.WithHelp("b", "branch")),
 		Merge:    key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "merge")),
 		Checkout: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "checkout")),
-		Diff:     key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "diff")),
+		Diff:     key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "expand/collapse")),
 		Yank:     key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "yank hash")),
 		Filter:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 		Follow:   key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "follow")),
+
+		ExpandAll:   key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "expand all")),
+		CollapseAll: key.NewBinding(key.WithKeys("J"), key.WithHelp("J", "collapse all")),
 
 		Help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Quit: key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
