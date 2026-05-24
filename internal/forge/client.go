@@ -7,7 +7,9 @@ type Client interface {
 	// reads
 	Sessions(ctx context.Context) ([]Session, error)
 	Session(ctx context.Context, idOrName string) (Session, error)
-	Log(ctx context.Context, sessionID string) ([]Message, error)
+	// Log returns messages for sessionID. ref selects the branch to walk;
+	// empty string walks from HEAD (default behaviour).
+	Log(ctx context.Context, sessionID, ref string) ([]Message, error)
 	Refs(ctx context.Context, sessionID string) ([]Ref, error)
 	Resources(ctx context.Context, scope string) ([]Resource, error)
 	ResourceDetail(ctx context.Context, path, name string) (Resource, error)

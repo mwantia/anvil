@@ -2,12 +2,14 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/mwantia/anvil/internal/forge"
@@ -16,6 +18,7 @@ import (
 type logState struct {
 	selected int
 	expanded bool
+	walkRef  string // non-empty when walking a specific ref rather than HEAD
 }
 
 func (a *App) updateLog(m tea.KeyMsg) {
@@ -36,13 +39,13 @@ func (a *App) updateLog(m tea.KeyMsg) {
 	case key.Matches(m, a.keys.Edit):
 		msg := a.currentMessage()
 		_, _ = a.client.EditFork(context.Background(), a.activeSession().ID, msg.Hash, "")
-		a.reloadLogRefs()
+		a.reloadLogRefs(a.logState.walkRef)
 		a.flash("forge sessions edit " + a.activeSession().Name + " " + shortHash(msg.Hash, 8))
 
 	case key.Matches(m, a.keys.Clone):
 		msg := a.currentMessage()
 		_ = a.client.Checkout(context.Background(), a.activeSession().ID, msg.Hash)
-		a.reloadLogRefs()
+		a.reloadLogRefs(a.logState.walkRef)
 		a.flash("forge sessions checkout " + a.activeSession().Name + " " + shortHash(msg.Hash, 8))
 
 	case key.Matches(m, a.keys.Yank):
@@ -68,8 +71,12 @@ func (a *App) viewLog(w, h int) string {
 
 	header := strings.Builder{}
 	header.WriteString(s.Accent.Render(ss.Name) + s.Faint.Render(" · ") + s.Muted.Render(ss.Model))
-	if a.headRefLabel() != "" {
-		header.WriteString(s.Faint.Render(" @ ") + s.Accent.Render(a.headRefLabel()))
+	displayRef := a.logState.walkRef
+	if displayRef == "" {
+		displayRef = a.headRefLabel()
+	}
+	if displayRef != "" {
+		header.WriteString(s.Faint.Render(" @ ") + s.Accent.Render(displayRef))
 	}
 
 	header.WriteString("\n")
@@ -153,7 +160,7 @@ func (a *App) renderMessageDetail(msg forge.Message) string {
 
 	b.WriteString("\n")
 	if a.logState.expanded && len(msg.Body) > 0 {
-		b.WriteString(strings.Join(msg.Body, "\n"))
+		b.WriteString(renderBody(string(msg.Role), msg.Body, a.detailWidth()))
 	} else {
 		b.WriteString(s.Muted.Render(msg.Preview))
 		if len(msg.Body) > 1 {
@@ -162,6 +169,47 @@ func (a *App) renderMessageDetail(msg forge.Message) string {
 	}
 
 	return b.String()
+}
+
+// detailWidth returns the approximate character width available for the detail panel.
+func (a *App) detailWidth() int {
+	right := a.width - (a.width-4)/2 - 4
+	if right < 20 {
+		return 20
+	}
+	return right
+}
+
+// renderBody renders full message body with markdown or JSON syntax highlighting.
+func renderBody(role string, lines []string, width int) string {
+	raw := strings.Join(lines, "\n")
+
+	switch role {
+	case "tool_call", "tool_result":
+		// Pretty-print JSON if possible, then wrap in a fenced code block for glamour.
+		var v any
+		if err := json.Unmarshal([]byte(raw), &v); err == nil {
+			if pretty, err := json.MarshalIndent(v, "", "  "); err == nil {
+				raw = string(pretty)
+			}
+		}
+		raw = "```json\n" + raw + "\n```"
+	}
+
+	r, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(width),
+	)
+	if err != nil {
+		return raw
+	}
+
+	rendered, err := r.Render(raw)
+	if err != nil {
+		return raw
+	}
+
+	return strings.TrimRight(rendered, "\n")
 }
 
 func formatDate(t time.Time) string {

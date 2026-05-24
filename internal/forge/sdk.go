@@ -226,9 +226,10 @@ func (c *SDKClient) Session(ctx context.Context, idOrName string) (Session, erro
 	return sessionFromSDK(resp.Session), nil
 }
 
-func (c *SDKClient) Log(ctx context.Context, sessionID string) ([]Message, error) {
+func (c *SDKClient) Log(ctx context.Context, sessionID, ref string) ([]Message, error) {
 	resp, err := c.api.Sessions.ListMessages(ctx, sdksessions.SessionsListMessagesRequest{
 		SessionID:  sessionID,
+		Ref:        ref,
 		Pagination: transport.Pagination{Limit: 500},
 	})
 
