@@ -1,6 +1,14 @@
-# anvil
+# Anvil
 
-Terminal UI for [Forge](../README.md) — inspect and manage AI sessions, conversation logs, branches, resources, and system status from the keyboard.
+> [!WARNING]
+> This project is in **early development** and is **not production-ready**.
+> Expect broken plugins, missing features, and frequent breaking changes to config schema and APIs.
+> Do not deploy in production or critical environments.
+>
+> This project is AI assisted - As seen by the `Co-Authored-By` tags in the commit history, as well as the GitHub's contributors tab.
+> I review changes where possible, but cannot guarantee full correctness or quality done by AI in all instances.
+
+Terminal UI for [Forge](https://github.com/mwantia/forge) — inspect and manage AI sessions, conversation logs, branches, resources, and system status from the keyboard.
 
 ## Requirements
 
