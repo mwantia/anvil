@@ -12,7 +12,7 @@ func Box(s Styles, title string, focused bool, width int, body string) string {
 	titleStyle := s.BoxTitle
 	if focused {
 		st = s.BoxFocused
-		titleStyle = s.BoxTitle.Foreground(AccentAmber)
+		titleStyle = s.BoxTitle.Foreground(s.ColAccent)
 	}
 
 	if width > 0 {
@@ -81,12 +81,12 @@ func Truncate(s string, n int) string {
 }
 
 // Hr renders a horizontal dashed rule.
-func Hr(width int) string {
+func Hr(s Styles, width int) string {
 	if width <= 0 {
 		return ""
 	}
 
-	return lipgloss.NewStyle().Foreground(ColRule).Render(strings.Repeat("─", width))
+	return lipgloss.NewStyle().Foreground(s.ColRule).Render(strings.Repeat("─", width))
 }
 
 // KV renders one "label  value" row with a dim right-padded label.

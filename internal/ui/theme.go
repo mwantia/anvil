@@ -18,25 +18,82 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ─── color tokens ──────────────────────────────────────────────────────
+// ─── fixed color tokens (same across all themes) ──────────────────────────
 
 var (
-	ColBg      = lipgloss.Color("#161d27")
 	ColFg      = lipgloss.Color("#e6e8eb")
 	ColFgDim   = lipgloss.Color("#8a93a3")
 	ColFgFaint = lipgloss.Color("#4a5364")
-	ColRule    = lipgloss.Color("#1f2731")
-	ColRule2   = lipgloss.Color("#2a3340")
 
 	ColOk     = lipgloss.Color("#4ade80")
 	ColInfo   = lipgloss.Color("#60a5fa")
 	ColWarn   = lipgloss.Color("#fbbf24")
 	ColDanger = lipgloss.Color("#f87171")
-
-	AccentAmber = lipgloss.Color("#f59e0b")
 )
 
-// ─── styles bundle ─────────────────────────────────────────────────────
+// ─── theme ────────────────────────────────────────────────────────────────
+
+// Theme holds the per-theme color values. Background tones are tinted subtly
+// toward the accent hue to give each theme a distinct atmosphere.
+type Theme struct {
+	Name      string
+	Accent    lipgloss.Color
+	Bg        lipgloss.Color // app background
+	Rule      lipgloss.Color // HR dividers
+	Rule2     lipgloss.Color // box borders, empty bar fill
+	RowSelBg  lipgloss.Color // selected row background
+	ChipAccBg lipgloss.Color // accent chip background
+}
+
+var Themes = []Theme{
+	{
+		Name:      "amber",
+		Accent:    lipgloss.Color("#f59e0b"),
+		Bg:        lipgloss.Color("#161d27"),
+		Rule:      lipgloss.Color("#1f2731"),
+		Rule2:     lipgloss.Color("#2a3340"),
+		RowSelBg:  lipgloss.Color("#121920"),
+		ChipAccBg: lipgloss.Color("#0e1a24"),
+	},
+	{
+		Name:      "cyan",
+		Accent:    lipgloss.Color("#06b6d4"),
+		Bg:        lipgloss.Color("#141e21"),
+		Rule:      lipgloss.Color("#1d2c30"),
+		Rule2:     lipgloss.Color("#263a3f"),
+		RowSelBg:  lipgloss.Color("#0f1c1f"),
+		ChipAccBg: lipgloss.Color("#0b181c"),
+	},
+	{
+		Name:      "slate",
+		Accent:    lipgloss.Color("#94a3b8"),
+		Bg:        lipgloss.Color("#161820"),
+		Rule:      lipgloss.Color("#1f222e"),
+		Rule2:     lipgloss.Color("#282b3a"),
+		RowSelBg:  lipgloss.Color("#11131e"),
+		ChipAccBg: lipgloss.Color("#0e101c"),
+	},
+	{
+		Name:      "lime",
+		Accent:    lipgloss.Color("#84cc16"),
+		Bg:        lipgloss.Color("#151e14"),
+		Rule:      lipgloss.Color("#1e2b1c"),
+		Rule2:     lipgloss.Color("#263826"),
+		RowSelBg:  lipgloss.Color("#101a10"),
+		ChipAccBg: lipgloss.Color("#0c160c"),
+	},
+	{
+		Name:      "magenta",
+		Accent:    lipgloss.Color("#d946ef"),
+		Bg:        lipgloss.Color("#1a1520"),
+		Rule:      lipgloss.Color("#261e2e"),
+		Rule2:     lipgloss.Color("#32263a"),
+		RowSelBg:  lipgloss.Color("#14101a"),
+		ChipAccBg: lipgloss.Color("#100d16"),
+	},
+}
+
+// ─── styles bundle ─────────────────────────────────────────────────────────
 
 type Styles struct {
 	App        lipgloss.Style
@@ -64,15 +121,21 @@ type Styles struct {
 	OK, Info, Warn, Danger lipgloss.Style
 
 	User, Assistant, ToolCall, ToolResult, System lipgloss.Style
+
+	// Raw colors for ad-hoc lipgloss.NewStyle() calls in other files.
+	ColAccent lipgloss.Color
+	ColRule   lipgloss.Color
+	ColRule2  lipgloss.Color
+	ColBg     lipgloss.Color
 }
 
-func NewStyles() Styles {
-	acc := AccentAmber
+func NewStyles(t Theme) Styles {
+	acc := t.Accent
 	bx := lipgloss.RoundedBorder()
 
 	box := lipgloss.NewStyle().
 		Border(bx).
-		BorderForeground(ColRule2).
+		BorderForeground(t.Rule2).
 		Foreground(ColFg).
 		Padding(0, 1)
 
@@ -85,7 +148,7 @@ func NewStyles() Styles {
 		Padding(0, 1)
 	rowSel := row.
 		Foreground(ColFg).
-		Background(lipgloss.Color("#121920")).
+		Background(t.RowSelBg).
 		BorderLeft(true).
 		BorderStyle(lipgloss.Border{Left: "▍"}).
 		BorderForeground(acc)
@@ -95,7 +158,7 @@ func NewStyles() Styles {
 		Padding(0, 1)
 	chipAcc := chip.
 		Foreground(acc).
-		Background(lipgloss.Color("#0e1a24"))
+		Background(t.ChipAccBg)
 
 	return Styles{
 		App: lipgloss.NewStyle().Foreground(ColFg),
@@ -103,7 +166,7 @@ func NewStyles() Styles {
 			Foreground(ColFgDim).
 			Padding(0, 1).
 			Border(lipgloss.NormalBorder(), false, false, true, false).
-			BorderForeground(ColRule),
+			BorderForeground(t.Rule),
 		Box:        box,
 		BoxFocused: boxFocused,
 		BoxTitle: lipgloss.NewStyle().
@@ -126,7 +189,7 @@ func NewStyles() Styles {
 
 		StatusBar: lipgloss.NewStyle().
 			Background(acc).
-			Foreground(ColBg).
+			Foreground(t.Bg).
 			Bold(true),
 
 		KeyHint: lipgloss.NewStyle().
@@ -162,6 +225,11 @@ func NewStyles() Styles {
 			Foreground(ColFgFaint),
 		System: lipgloss.NewStyle().
 			Foreground(ColWarn),
+
+		ColAccent: acc,
+		ColRule:   t.Rule,
+		ColRule2:  t.Rule2,
+		ColBg:     t.Bg,
 	}
 }
 

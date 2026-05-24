@@ -13,7 +13,7 @@ func (a *App) viewSystem(w int) string {
 	tileW := (w - 12) / 4
 
 	agentTile := strings.Builder{}
-	agentTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(a.system.Agent.Version))
+	agentTile.WriteString(lipgloss.NewStyle().Foreground(s.ColAccent).Bold(true).Render(a.system.Agent.Version))
 	agentTile.WriteString("  " + s.Faint.Render(a.system.Agent.Uptime) + "\n")
 	agentTile.WriteString(s.Faint.Render("http ") + s.Muted.Render(a.system.Agent.HTTP) + "\n")
 	agentTile.WriteString(s.Faint.Render("metr ") + s.Muted.Render(a.system.Agent.Metrics) + "\n")
@@ -30,7 +30,7 @@ func (a *App) viewSystem(w int) string {
 	}
 
 	sessTile := strings.Builder{}
-	sessTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(fmt.Sprintf("%d", live)))
+	sessTile.WriteString(lipgloss.NewStyle().Foreground(s.ColAccent).Bold(true).Render(fmt.Sprintf("%d", live)))
 	sessTile.WriteString("  " + s.Faint.Render("live\n"))
 	sessTile.WriteString(s.Accent.Render(Spark([]int{1, 2, 2, 3, 3, 4, 3, 4, 5, 4, 5, 5})) + "\n")
 	sessTile.WriteString(s.Faint.Render("arch ") + s.Muted.Render(fmt.Sprintf("%d", archived)) + "  ")
@@ -51,13 +51,13 @@ func (a *App) viewSystem(w int) string {
 		tokLabel = fmt.Sprintf("%.1fK", float64(total)/1_000)
 	}
 
-	tokTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(tokLabel))
+	tokTile.WriteString(lipgloss.NewStyle().Foreground(s.ColAccent).Bold(true).Render(tokLabel))
 	tokTile.WriteString("  " + s.Faint.Render("total tokens\n"))
 	tokTile.WriteString(s.Faint.Render("in  ") + s.Muted.Render(fmt.Sprintf("%d", tokIn)) + "\n")
 	tokTile.WriteString(s.Faint.Render("out ") + s.Muted.Render(fmt.Sprintf("%d", tokOut)))
 
 	storTile := strings.Builder{}
-	storTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(fmt.Sprintf("%d", a.system.Storage.Objects)))
+	storTile.WriteString(lipgloss.NewStyle().Foreground(s.ColAccent).Bold(true).Render(fmt.Sprintf("%d", a.system.Storage.Objects)))
 	storTile.WriteString("  " + s.Faint.Render("objects\n"))
 	storTile.WriteString(s.Faint.Render("backend ") + s.Muted.Render(a.system.Storage.Backend) + "\n")
 	storTile.WriteString(s.Faint.Render("refs    ") + s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Refs)) + "\n")

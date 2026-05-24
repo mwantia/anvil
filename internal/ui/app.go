@@ -16,7 +16,7 @@ import (
 type Screen int
 
 const (
-	ScreenSessions  Screen = iota // tab 1 — sessions list + branches combined
+	ScreenSessions  Screen = iota // tab 1 — expandable session tree
 	ScreenResources               // tab 2
 	ScreenSystem                  // tab 3
 	ScreenLog                     // sub-screen, entered via Enter on a session
@@ -32,9 +32,10 @@ var screenLabels = []string{
 
 // App is the root Bubble Tea model.
 type App struct {
-	client forge.Client
-	keys   KeyMap
-	styles Styles
+	client   forge.Client
+	keys     KeyMap
+	styles   Styles
+	themeIdx int
 
 	screen      Screen
 	width       int
@@ -51,7 +52,6 @@ type App struct {
 
 	sessionsState  sessionsState
 	logState       logState
-	branchesState  branchesState
 	resourcesState resourcesState
 }
 
@@ -59,9 +59,11 @@ func NewApp(client forge.Client) *App {
 	app := &App{
 		client: client,
 		keys:   DefaultKeys(),
-		styles: NewStyles(),
+		styles: NewStyles(Themes[0]),
 		now:    time.Now(),
 	}
+	app.sessionsState.expanded = map[string]bool{}
+	app.sessionsState.sessionRefs = map[string][]forge.Ref{}
 	app.reloadAll()
 
 	return app
@@ -75,17 +77,28 @@ func (a *App) reloadAll() {
 		a.sessions = s
 	}
 
-	if len(a.sessions) > 0 {
-		idx := a.sessionsState.selected
-		if idx >= len(a.sessions) {
-			idx = 0
+	// Refresh refs for any currently expanded sessions.
+	visible := a.visibleSessions()
+	for _, ss := range visible {
+		if a.sessionsState.expanded[ss.ID] {
+			if rs, err := a.client.Refs(ctx, ss.ID); err == nil {
+				a.sessionsState.sessionRefs[ss.ID] = rs
+			}
 		}
-		id := a.sessions[idx].ID
-		if ms, err := a.client.Log(ctx, id); err == nil {
+	}
+
+	// Sync log + refs for the active session.
+	if active := a.activeSession(); active.ID != "" {
+		if ms, err := a.client.Log(ctx, active.ID, ""); err == nil {
 			a.messages = ms
-			a.sessions[idx].Messages, a.sessions[idx].Counts = countMessages(ms)
+			for i := range a.sessions {
+				if a.sessions[i].ID == active.ID {
+					a.sessions[i].Messages, a.sessions[i].Counts = countMessages(ms)
+					break
+				}
+			}
 		}
-		if rs, err := a.client.Refs(ctx, id); err == nil {
+		if rs, ok := a.sessionsState.sessionRefs[active.ID]; ok {
 			a.refs = rs
 		}
 	}
@@ -106,20 +119,6 @@ func countMessages(msgs []forge.Message) (int, map[string]int) {
 	}
 
 	return len(msgs), counts
-}
-
-func (a *App) activeSession() forge.Session {
-	visible := a.visibleSessions()
-	if len(visible) == 0 {
-		return forge.Session{}
-	}
-
-	idx := a.sessionsState.selected
-	if idx >= len(visible) {
-		idx = len(visible) - 1
-	}
-
-	return visible[idx]
 }
 
 func (a *App) headRefLabel() string {
@@ -163,16 +162,19 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, tick()
 
 	case tea.KeyMsg:
-		// Global: quit always works
 		if key.Matches(m, a.keys.Quit) {
 			return a, tea.Quit
 		}
-		// Esc: exit log sub-screen
 		if key.Matches(m, a.keys.Esc) && a.screen == ScreenLog {
 			a.screen = ScreenSessions
 			return a, nil
 		}
-		// Tab numbers only switch top-level tabs
+		if m.String() == "t" {
+			a.themeIdx = (a.themeIdx + 1) % len(Themes)
+			a.styles = NewStyles(Themes[a.themeIdx])
+			a.flash("theme: " + Themes[a.themeIdx].Name)
+			return a, nil
+		}
 		switch {
 		case key.Matches(m, a.keys.Tab1):
 			a.screen = ScreenSessions
@@ -209,8 +211,13 @@ func (a *App) View() string {
 	}
 
 	header := TermBar(a.styles, a.width, screenLabels[a.screen])
-	tabs := TabBar(a.styles, a.width, tabIdx, screenNames,
-		a.activeSession().Name, a.headRefLabel())
+
+	health := a.styles.Faint.Render("○")
+	if a.system.Agent.HTTP != "" {
+		health = a.styles.OK.Render("●")
+	}
+	tabs := TabBar(a.styles, a.width, tabIdx, screenNames, a.system.Agent.HTTP, health)
+
 	hints := KeyHints(a.styles, a.screenHints())
 
 	left := []string{
@@ -262,28 +269,21 @@ func fitLines(s string, n int) string {
 }
 
 func (a *App) screenHints() [][2]string {
-	common := [][2]string{{"1-3", "tab"}, {"q", "quit"}}
+	common := [][2]string{{"1-3", "tab"}, {"t", "theme"}, {"q", "quit"}}
 	var hints [][2]string
 
 	switch a.screen {
 	case ScreenSessions:
-		if a.sessionsState.focusBranches {
-			hints = [][2]string{
-				{"↑↓", "refs"}, {"←→", "pane"},
-				{"c", "checkout"}, {"b", "branch"}, {"x", "delete"},
-				{"tab/esc", "back"},
-			}
-		} else {
-			hints = [][2]string{
-				{"↑↓", "select"}, {"enter", "log"}, {"tab", "branches"},
-				{"n", "new"}, {"c", "clone"}, {"a", "archive"}, {"x", "delete"},
-			}
+		hints = [][2]string{
+			{"↑↓", "select"}, {"→/d", "expand"}, {"←", "collapse"},
+			{"K/J", "all"}, {"enter", "log"},
+			{"n", "new"}, {"c", "clone"}, {"a", "archive"}, {"x", "delete"},
 		}
 
 	case ScreenLog:
 		hints = [][2]string{
 			{"↑↓", "walk"}, {"enter", "expand"},
-			{"e", "edit·fork"}, {"c", "checkout"}, {"y", "yank"}, {"esc", "back"},
+			{"e", "edit·fork"}, {"c", "checkout"}, {"y", "yank"}, {"⌫", "back"},
 		}
 
 	case ScreenResources:

@@ -185,7 +185,7 @@ func (a *App) viewResources(w int) string {
 	filtered := a.filteredResources()
 	listBody := strings.Builder{}
 	listBody.WriteString(s.Header.Render(fmt.Sprintf("%-26s %4s %8s %s", "PATH", "VER", "SIZE", "SCOPE")) + "\n")
-	listBody.WriteString(Hr(listW-4) + "\n")
+	listBody.WriteString(Hr(s, listW-4) + "\n")
 	for i, r := range filtered {
 		line := fmt.Sprintf("%-26s %4s %8s %s",
 			Truncate(r.Path, 26),
