@@ -28,6 +28,7 @@ func (a *App) viewSystem(w int) string {
 			live++
 		}
 	}
+
 	sessTile := strings.Builder{}
 	sessTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(fmt.Sprintf("%d", live)))
 	sessTile.WriteString("  " + s.Faint.Render("live\n"))
@@ -41,6 +42,7 @@ func (a *App) viewSystem(w int) string {
 		tokIn += ss.TokensIn
 		tokOut += ss.TokensOut
 	}
+
 	total := tokIn + tokOut
 	tokLabel := fmt.Sprintf("%d", total)
 	if total > 1_000_000 {
@@ -48,6 +50,7 @@ func (a *App) viewSystem(w int) string {
 	} else if total > 1_000 {
 		tokLabel = fmt.Sprintf("%.1fK", float64(total)/1_000)
 	}
+
 	tokTile.WriteString(lipgloss.NewStyle().Foreground(AccentAmber).Bold(true).Render(tokLabel))
 	tokTile.WriteString("  " + s.Faint.Render("total tokens\n"))
 	tokTile.WriteString(s.Faint.Render("in  ") + s.Muted.Render(fmt.Sprintf("%d", tokIn)) + "\n")
@@ -72,11 +75,14 @@ func (a *App) viewSystem(w int) string {
 	plugins := strings.Builder{}
 	for _, p := range a.system.Plugins {
 		statusStyle := s.OK
-		if p.Status == "degraded" {
+		switch p.Status {
+		case "degraded":
 			statusStyle = s.Warn
-		} else if p.Status == "down" {
+
+		case "down":
 			statusStyle = s.Danger
 		}
+
 		line := fmt.Sprintf("%s %-12s %s %s %s",
 			s.Chip.Render(p.Kind),
 			p.Name,
@@ -84,8 +90,10 @@ func (a *App) viewSystem(w int) string {
 			statusStyle.Render("●"),
 			statusStyle.Render(p.Status),
 		)
+
 		plugins.WriteString(line + "\n")
 	}
+
 	plugBox := Box(s, fmt.Sprintf("plugins [%d]", len(a.system.Plugins)), false, colW, plugins.String())
 
 	act := strings.Builder{}
@@ -94,17 +102,20 @@ func (a *App) viewSystem(w int) string {
 		switch e.Level {
 		case "WARN":
 			lvlStyle = s.Warn
+
 		case "ERROR":
 			lvlStyle = s.Danger
+
 		case "INFO":
 			lvlStyle = s.Info
 		}
-		act.WriteString(fmt.Sprintf("%s %s %s %s\n",
+
+		fmt.Fprintf(&act, "%s %s %s %s\n",
 			lvlStyle.Render(fmt.Sprintf("%-5s", e.Level)),
 			s.Faint.Render(e.Time),
 			s.Accent.Render(fmt.Sprintf("%-8s", e.Source)),
 			s.Muted.Render(Truncate(e.Message, colW-26)),
-		))
+		)
 	}
 	act.WriteString("\n" + s.Accent.Render("›") + " " + s.Faint.Render("tail —follow"))
 	actBox := Box(s, "recent activity", false, colW, act.String())
@@ -120,29 +131,36 @@ func (a *App) renderMiniDag() string {
 	if len(a.messages) == 0 {
 		return s.Faint.Render("no messages loaded")
 	}
+
 	refsByHash := map[string][]string{}
 	for _, r := range a.refs {
 		if r.IsHead {
 			refsByHash[r.Hash] = append(refsByHash[r.Hash], "HEAD")
 			continue
 		}
+
 		refsByHash[r.Hash] = append(refsByHash[r.Hash], r.Ref)
 	}
+
 	var lines []string
 	for _, msg := range a.messages {
 		role := string(msg.Role)
-		line := s.Accent.Render("*") + "  " + s.Faint.Render(shortHash(msg.Hash, 8)) + "  "
+		var line strings.Builder
+		line.WriteString(s.Accent.Render("*") + "  " + s.Faint.Render(shortHash(msg.Hash, 8)) + "  ")
+
 		for _, rn := range refsByHash[msg.Hash] {
 			if rn == "main" {
-				line += s.Info.Render(rn) + " "
+				line.WriteString(s.Info.Render(rn) + " ")
 			} else if strings.HasPrefix(rn, "fork-") {
-				line += s.Warn.Render(shortHash(rn, 12)) + " "
+				line.WriteString(s.Warn.Render(shortHash(rn, 12)) + " ")
 			} else {
-				line += s.ChipAcc.Render(shortHash(rn, 14)) + " "
+				line.WriteString(s.ChipAcc.Render(shortHash(rn, 14)) + " ")
 			}
 		}
-		line += s.RoleStyle(role).Render(role)
-		lines = append(lines, line)
+
+		line.WriteString(s.RoleStyle(role).Render(role))
+		lines = append(lines, line.String())
 	}
+
 	return strings.Join(lines, "\n")
 }

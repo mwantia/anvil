@@ -31,34 +31,42 @@ func (a *App) updateBranches(m tea.KeyMsg) {
 		if a.branchesState.pane == paneRefs && a.branchesState.selectedRef > 0 {
 			a.branchesState.selectedRef--
 		}
+
 	case key.Matches(m, a.keys.Down):
 		if a.branchesState.pane == paneRefs && a.branchesState.selectedRef < len(a.refs)-1 {
 			a.branchesState.selectedRef++
 		}
+
 	case key.Matches(m, a.keys.Left):
 		if a.branchesState.pane > 0 {
 			a.branchesState.pane--
 		}
+
 	case key.Matches(m, a.keys.Right):
 		if int(a.branchesState.pane) < int(paneDetail) {
 			a.branchesState.pane++
 		}
+
 	case key.Matches(m, a.keys.Tab):
 		a.branchesState.pane = (a.branchesState.pane + 1) % 3
+
 	case key.Matches(m, a.keys.Enter), key.Matches(m, a.keys.Checkout):
 		r := a.currentRef()
 		_ = a.client.Checkout(context.Background(), a.activeSession().ID, r.Ref)
 		a.reloadLogRefs()
 		a.flash("forge sessions checkout " + a.activeSession().Name + " " + r.Ref)
+
 	case key.Matches(m, a.keys.Branch):
 		r := a.currentRef()
 		_ = a.client.Branch(context.Background(), a.activeSession().ID, "new-branch", r.Hash)
 		a.reloadLogRefs()
 		a.flash("forge sessions branch " + a.activeSession().Name + " new-branch")
+
 	case key.Matches(m, a.keys.Merge):
 		r := a.currentRef()
 		_ = a.client.Merge(context.Background(), a.activeSession().ID, r.Ref)
 		a.flash("forge sessions merge " + r.Ref)
+
 	case key.Matches(m, a.keys.Delete):
 		r := a.currentRef()
 		if !r.IsHead && r.Ref != "main" {
@@ -66,6 +74,7 @@ func (a *App) updateBranches(m tea.KeyMsg) {
 			a.reloadLogRefs()
 			a.flash("forge sessions branch -d " + r.Ref)
 		}
+
 	case key.Matches(m, a.keys.Yank):
 		a.flash("yanked " + shortHash(a.currentRef().Hash, 12))
 	}
@@ -75,9 +84,11 @@ func (a *App) currentRef() forge.Ref {
 	if len(a.refs) == 0 {
 		return forge.Ref{}
 	}
+
 	if a.branchesState.selectedRef >= len(a.refs) {
 		a.branchesState.selectedRef = len(a.refs) - 1
 	}
+
 	return a.refs[a.branchesState.selectedRef]
 }
 
@@ -85,14 +96,12 @@ func (a *App) viewBranches(w int, focused bool) string {
 	s := a.styles
 	leftW := 28
 	rightW := 36
-	midW := w - leftW - rightW - 6
-	if midW < 30 {
-		midW = 30
-	}
+	midW := max(w-leftW-rightW-6, 30)
 
 	refsBody := strings.Builder{}
 	refsBody.WriteString(s.Header.Render(fmt.Sprintf("%-22s %s", "REF", "HASH")) + "\n")
 	refsBody.WriteString(Hr(leftW-4) + "\n")
+
 	for i, r := range a.refs {
 		label := refLabel(s, r)
 		line := fmt.Sprintf("%-22s %s", label, s.Faint.Render(shortHash(r.Hash, 12)))
@@ -102,6 +111,7 @@ func (a *App) viewBranches(w int, focused bool) string {
 		}
 		refsBody.WriteString(st.Width(leftW-4).Render(line) + "\n")
 	}
+
 	refsBody.WriteString("\n")
 	refsBody.WriteString(s.ChipAcc.Render("c") + " " + s.Faint.Render("checkout") + "  ")
 	refsBody.WriteString(s.Chip.Render("b") + " " + s.Faint.Render("branch") + "\n")
@@ -117,6 +127,7 @@ func (a *App) viewBranches(w int, focused bool) string {
 	if r.Target != "" {
 		detail.WriteString(KV(s, "→", s.Accent.Render(r.Target), 8) + "\n")
 	}
+
 	detail.WriteString(KV(s, "hash", s.Muted.Render(r.Hash), 8) + "\n")
 	detail.WriteString(KV(s, "type", s.Muted.Render(refType(r)), 8) + "\n")
 	detail.WriteString("\n")
@@ -124,9 +135,11 @@ func (a *App) viewBranches(w int, focused bool) string {
 	detail.WriteString(s.ChipAcc.Render("c") + " " + s.Muted.Render("forge sessions checkout "+a.activeSession().Name+" "+r.Ref) + "\n")
 	detail.WriteString(s.Chip.Render("b") + " " + s.Muted.Render("branch from "+shortHash(r.Hash, 8)) + "\n")
 	detail.WriteString(s.Chip.Render("m") + " " + s.Muted.Render("merge into HEAD") + "\n")
+
 	if !r.IsHead && r.Ref != "main" {
 		detail.WriteString(s.Chip.Render("x") + " " + s.Muted.Render("delete ref") + "\n")
 	}
+
 	detailBox := Box(s, r.Ref, focused && a.branchesState.pane == paneDetail, rightW, detail.String())
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, refsBox, "  ", dagBox, "  ", detailBox)
@@ -136,13 +149,17 @@ func refLabel(s Styles, r forge.Ref) string {
 	switch {
 	case r.IsHead:
 		return s.Accent.Render("HEAD") + s.Faint.Render(" → ") + s.Accent.Render(r.Target)
+
 	case r.Ref == "main":
 		return s.Info.Render(r.Ref)
+
 	case strings.HasPrefix(r.Ref, "edit-"):
 		return s.Accent.Render(r.Ref)
+
 	case strings.HasPrefix(r.Ref, "fork-"):
 		return s.Warn.Render(r.Ref)
 	}
+
 	return r.Ref
 }
 
@@ -150,13 +167,17 @@ func refType(r forge.Ref) string {
 	switch {
 	case r.IsHead:
 		return "HEAD pointer"
+
 	case r.Ref == "main":
 		return "protected"
+
 	case strings.HasPrefix(r.Ref, "edit-"):
 		return "edit branch"
+
 	case strings.HasPrefix(r.Ref, "fork-"):
 		return "fork branch"
 	}
+
 	return "ref"
 }
 
@@ -177,22 +198,11 @@ func (a *App) renderDag() string {
 		hash string
 	}
 
-	// Build DAG rows from messages if available; fall back to fixed demo layout.
+	// Build DAG rows from messages if available.
 	var rows []row
 	if len(a.messages) > 0 {
 		for _, msg := range a.messages {
 			rows = append(rows, row{"*  ", msg.Hash})
-		}
-	} else {
-		rows = []row{
-			{"*  ", "a29cae3eb772"}, {"*  ", "7aa6bec2295f"},
-			{"*  ", "92cab7f10934"}, {"*  ", "1dc7bfcb9fe5"},
-			{"*  ", "3f9bd71a04c8"}, {"│╲ ", ""},
-			{"│ *", "65c45b08254d"}, {"│ *", "4f2a01d6b88e"},
-			{"│╱ ", ""}, {"*  ", "8e3c1b09f1a2"},
-			{"*  ", "6e9af221c053"}, {"│╲ ", ""},
-			{"│ *", "6435124c238f"}, {"│╱ ", ""},
-			{"*  ", "1d23519edc47"},
 		}
 	}
 
@@ -234,11 +244,14 @@ func (a *App) renderDag() string {
 				}
 			}
 		}
+
 		role := string(meta.Role)
 		if role != "" {
 			b.WriteString(s.RoleStyle(role).Render(role))
 		}
+
 		b.WriteString("\n")
 	}
+
 	return b.String()
 }

@@ -63,6 +63,7 @@ func NewApp(client forge.Client) *App {
 		now:    time.Now(),
 	}
 	app.reloadAll()
+
 	return app
 }
 
@@ -73,6 +74,7 @@ func (a *App) reloadAll() {
 	if s, err := a.client.Sessions(ctx); err == nil {
 		a.sessions = s
 	}
+
 	if len(a.sessions) > 0 {
 		idx := a.sessionsState.selected
 		if idx >= len(a.sessions) {
@@ -87,9 +89,11 @@ func (a *App) reloadAll() {
 			a.refs = rs
 		}
 	}
+
 	if rs, err := a.client.Resources(ctx, "all"); err == nil {
 		a.resources = rs
 	}
+
 	if sys, err := a.client.System(ctx); err == nil {
 		a.system = sys
 	}
@@ -100,6 +104,7 @@ func countMessages(msgs []forge.Message) (int, map[string]int) {
 	for _, m := range msgs {
 		counts[string(m.Role)]++
 	}
+
 	return len(msgs), counts
 }
 
@@ -108,10 +113,12 @@ func (a *App) activeSession() forge.Session {
 	if len(visible) == 0 {
 		return forge.Session{}
 	}
+
 	idx := a.sessionsState.selected
 	if idx >= len(visible) {
 		idx = len(visible) - 1
 	}
+
 	return visible[idx]
 }
 
@@ -121,6 +128,7 @@ func (a *App) headRefLabel() string {
 			return r.Target
 		}
 	}
+
 	return ""
 }
 
@@ -135,7 +143,9 @@ func tick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
-func (a *App) Init() tea.Cmd { return tick() }
+func (a *App) Init() tea.Cmd {
+	return tick()
+}
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m := msg.(type) {
@@ -184,6 +194,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.updateResources(m)
 		}
 	}
+
 	return a, nil
 }
 
@@ -215,10 +226,7 @@ func (a *App) View() string {
 
 	chromeH := lipgloss.Height(header) + lipgloss.Height(tabs) +
 		lipgloss.Height(hints) + lipgloss.Height(status) + 2
-	bodyH := a.height - chromeH
-	if bodyH < 1 {
-		bodyH = 1
-	}
+	bodyH := max(a.height-chromeH, 1)
 
 	var body string
 	switch a.screen {
@@ -231,6 +239,7 @@ func (a *App) View() string {
 	case ScreenSystem:
 		body = a.viewSystem(a.width)
 	}
+
 	body = fitLines(body, bodyH)
 
 	return a.styles.App.Render(
@@ -244,15 +253,18 @@ func fitLines(s string, n int) string {
 	if len(lines) > n {
 		return strings.Join(lines[:n], "\n")
 	}
+
 	if len(lines) < n {
 		return s + strings.Repeat("\n", n-len(lines))
 	}
+
 	return s
 }
 
 func (a *App) screenHints() [][2]string {
 	common := [][2]string{{"1-3", "tab"}, {"q", "quit"}}
 	var hints [][2]string
+
 	switch a.screen {
 	case ScreenSessions:
 		if a.sessionsState.focusBranches {
@@ -267,15 +279,19 @@ func (a *App) screenHints() [][2]string {
 				{"n", "new"}, {"c", "clone"}, {"a", "archive"}, {"x", "delete"},
 			}
 		}
+
 	case ScreenLog:
 		hints = [][2]string{
 			{"↑↓", "walk"}, {"enter", "expand"},
 			{"e", "edit·fork"}, {"c", "checkout"}, {"y", "yank"}, {"esc", "back"},
 		}
+
 	case ScreenResources:
 		hints = [][2]string{{"↑↓", "select"}, {"←→", "scope"}, {"y", "yank"}}
+
 	case ScreenSystem:
 		hints = [][2]string{{"r", "reload"}}
 	}
+
 	return append(hints, common...)
 }

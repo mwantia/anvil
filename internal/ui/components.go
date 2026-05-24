@@ -14,12 +14,15 @@ func Box(s Styles, title string, focused bool, width int, body string) string {
 		st = s.BoxFocused
 		titleStyle = s.BoxTitle.Foreground(AccentAmber)
 	}
+
 	if width > 0 {
 		st = st.Width(width)
 	}
+
 	if title == "" {
 		return st.Render(body)
 	}
+
 	return st.Render(titleStyle.Render(focusedGlyph(focused)+" "+title) + "\n" + body)
 }
 
@@ -27,6 +30,7 @@ func focusedGlyph(focused bool) string {
 	if focused {
 		return "▸"
 	}
+
 	return "·"
 }
 
@@ -36,24 +40,25 @@ func Spark(values []int) string {
 	if len(values) == 0 {
 		return ""
 	}
+
 	maxVal := 1
 	for _, v := range values {
 		if v > maxVal {
 			maxVal = v
 		}
 	}
+
 	runes := []rune(blocks)
 	var b strings.Builder
 	for _, v := range values {
-		idx := (v * (len(runes) - 1)) / maxVal
-		if idx < 0 {
-			idx = 0
-		}
+		idx := max((v*(len(runes)-1))/maxVal, 0)
 		if idx >= len(runes) {
 			idx = len(runes) - 1
 		}
+
 		b.WriteRune(runes[idx])
 	}
+
 	return b.String()
 }
 
@@ -62,13 +67,16 @@ func Truncate(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
+
 	r := []rune(s)
 	if len(r) <= n {
 		return s
 	}
+
 	if n <= 1 {
 		return "…"
 	}
+
 	return string(r[:n-1]) + "…"
 }
 
@@ -77,6 +85,7 @@ func Hr(width int) string {
 	if width <= 0 {
 		return ""
 	}
+
 	return lipgloss.NewStyle().Foreground(ColRule).Render(strings.Repeat("─", width))
 }
 
@@ -89,5 +98,6 @@ func padRight(s string, n int) string {
 	if len(s) >= n {
 		return s
 	}
+
 	return s + strings.Repeat(" ", n-len(s))
 }

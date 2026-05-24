@@ -27,21 +27,25 @@ func (a *App) updateResources(m tea.KeyMsg) {
 			a.resourcesState.selected--
 			a.loadCurrentResourceDetail()
 		}
+
 	case key.Matches(m, a.keys.Down):
 		if a.resourcesState.selected < len(a.filteredResources())-1 {
 			a.resourcesState.selected++
 			a.loadCurrentResourceDetail()
 		}
+
 	case key.Matches(m, a.keys.Left):
 		a.resourcesState.scope = cycleScope(a.resourcesState.scope, -1)
 		a.resourcesState.selected = 0
 		_ = a.reloadResources()
 		a.loadCurrentResourceDetail()
+
 	case key.Matches(m, a.keys.Right):
 		a.resourcesState.scope = cycleScope(a.resourcesState.scope, +1)
 		a.resourcesState.selected = 0
 		_ = a.reloadResources()
 		a.loadCurrentResourceDetail()
+
 	case key.Matches(m, a.keys.Yank):
 		r := a.currentResource()
 		a.flash("yanked " + r.HEAD)
@@ -53,17 +57,21 @@ func (a *App) loadCurrentResourceDetail() {
 	if len(rs) == 0 {
 		return
 	}
+
 	idx := a.resourcesState.selected
 	if idx >= len(rs) {
 		return
 	}
+
 	r := rs[idx]
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
 	detail, err := a.client.ResourceDetail(ctx, r.Path, r.Name)
 	if err != nil {
 		return
 	}
+
 	for i := range a.resources {
 		if a.resources[i].Path == r.Path && a.resources[i].Name == r.Name {
 			a.resources[i] = detail
@@ -76,26 +84,31 @@ func cycleScope(s string, dir int) string {
 	if s == "" {
 		s = "all"
 	}
+
 	for i, x := range scopeOrder {
 		if x == s {
 			next := (i + dir + len(scopeOrder)) % len(scopeOrder)
 			return scopeOrder[next]
 		}
 	}
+
 	return "all"
 }
 
 func (a *App) reloadResources() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	scope := a.resourcesState.scope
 	if scope == "" {
 		scope = "all"
 	}
+
 	rs, err := a.client.Resources(ctx, scope)
 	if err != nil {
 		return err
 	}
+
 	a.resources = rs
 	return nil
 }
@@ -104,12 +117,14 @@ func (a *App) filteredResources() []forge.Resource {
 	if a.resourcesState.scope == "" || a.resourcesState.scope == "all" {
 		return a.resources
 	}
+
 	var out []forge.Resource
 	for _, r := range a.resources {
 		if string(r.Scope) == a.resourcesState.scope {
 			out = append(out, r)
 		}
 	}
+
 	return out
 }
 
@@ -118,9 +133,11 @@ func (a *App) currentResource() forge.Resource {
 	if len(rs) == 0 {
 		return forge.Resource{}
 	}
+
 	if a.resourcesState.selected >= len(rs) {
 		a.resourcesState.selected = len(rs) - 1
 	}
+
 	return rs[a.resourcesState.selected]
 }
 
@@ -133,6 +150,7 @@ func (a *App) viewResources(w int) string {
 	if listW < 28 {
 		listW = 28
 	}
+
 	if detailW < 32 {
 		detailW = 32
 	}
@@ -145,14 +163,17 @@ func (a *App) viewResources(w int) string {
 				count++
 			}
 		}
+
 		active := sc == a.resourcesState.scope || (a.resourcesState.scope == "" && sc == "all")
 		line := fmt.Sprintf("%-12s %d", sc, count)
 		st := s.Row
 		if active {
 			st = s.RowSel
 		}
+
 		scopeBody.WriteString(st.Width(scopeW-4).Render(line) + "\n")
 	}
+
 	scopeBody.WriteString("\n")
 	scopeBody.WriteString(s.Faint.Render("STORE") + "\n")
 	scopeBody.WriteString(KV(s, "backend", s.Muted.Render(a.system.Storage.Backend), 9) + "\n")
@@ -172,15 +193,19 @@ func (a *App) viewResources(w int) string {
 			r.Size,
 			s.Chip.Render(string(r.Scope)),
 		)
+
 		st := s.Row
 		if i == a.resourcesState.selected {
 			st = s.RowSel
 		}
+
 		listBody.WriteString(st.Width(listW-4).Render(line) + "\n")
 	}
+
 	if len(filtered) == 0 {
 		listBody.WriteString("\n" + s.Faint.Render("  no resources in scope "+a.resourcesState.scope))
 	}
+
 	listBox := Box(s, fmt.Sprintf("resources [%d]", len(filtered)), true, listW, listBody.String())
 
 	r := a.currentResource()
@@ -195,25 +220,30 @@ func (a *App) viewResources(w int) string {
 	detail.WriteString("\n")
 
 	detail.WriteString(s.Faint.Render(fmt.Sprintf("HISTORY · %d of %d", len(r.History), r.Versions)) + "\n")
+
 	for i, h := range r.History {
 		marker := "  "
 		if i == 0 {
 			marker = s.Accent.Render("▍ ")
 		}
+
 		line := fmt.Sprintf("%sv%-3d %s  %s  %s",
 			marker, h.Version,
 			s.Faint.Render(h.Hash),
 			s.Faint.Render(h.Date.Format("2006-01-02 15:04")),
 			s.Muted.Render(Truncate(h.Delta, detailW-32)),
 		)
+
 		detail.WriteString(line + "\n")
 	}
 	detail.WriteString("\n")
+
 	if r.Summary != "" {
 		detail.WriteString(s.Faint.Render("SUMMARY") + "\n")
 		detail.WriteString(s.Muted.Render(r.Summary))
 	}
 
 	detailBox := Box(s, r.Name, false, detailW, detail.String())
+
 	return lipgloss.JoinHorizontal(lipgloss.Top, scopeBox, "  ", listBox, "  ", detailBox)
 }
