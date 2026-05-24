@@ -14,14 +14,14 @@
 //	system.go      screen 5 · forge system status
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+)
 
 // ─── color tokens ──────────────────────────────────────────────────────
 
 var (
-	ColBg      = lipgloss.Color("#0a0d12")
-	ColBg2     = lipgloss.Color("#0f141b")
-	ColBg3     = lipgloss.Color("#161d27")
+	ColBg      = lipgloss.Color("#161d27")
 	ColFg      = lipgloss.Color("#e6e8eb")
 	ColFgDim   = lipgloss.Color("#8a93a3")
 	ColFgFaint = lipgloss.Color("#4a5364")
@@ -73,66 +73,95 @@ func NewStyles() Styles {
 	box := lipgloss.NewStyle().
 		Border(bx).
 		BorderForeground(ColRule2).
-		Background(ColBg2).
 		Foreground(ColFg).
 		Padding(0, 1)
 
 	boxFocused := box.BorderForeground(acc)
 
-	row := lipgloss.NewStyle().Foreground(ColFgDim).Padding(0, 1)
+	row := lipgloss.NewStyle().
+		Foreground(ColFgDim).
+		BorderLeft(true).
+		BorderStyle(lipgloss.Border{Left: " "}).
+		Padding(0, 1)
 	rowSel := row.
 		Foreground(ColFg).
-		Background(lipgloss.Color("#16202c")).
+		Background(lipgloss.Color("#121920")).
 		BorderLeft(true).
 		BorderStyle(lipgloss.Border{Left: "▍"}).
 		BorderForeground(acc)
 
 	chip := lipgloss.NewStyle().
-		Background(ColBg3).Foreground(ColFgDim).Padding(0, 1)
+		Foreground(ColFgDim).
+		Padding(0, 1)
 	chipAcc := chip.
-		Foreground(acc).Background(lipgloss.Color("#0e1a24"))
+		Foreground(acc).
+		Background(lipgloss.Color("#0e1a24"))
 
 	return Styles{
-		App: lipgloss.NewStyle().Background(ColBg).Foreground(ColFg),
+		App: lipgloss.NewStyle().Foreground(ColFg),
 		TermBar: lipgloss.NewStyle().
-			Background(lipgloss.Color("#060a0e")).
-			Foreground(ColFgDim).Padding(0, 1).
+			Foreground(ColFgDim).
+			Padding(0, 1).
 			Border(lipgloss.NormalBorder(), false, false, true, false).
 			BorderForeground(ColRule),
 		Box:        box,
 		BoxFocused: boxFocused,
-		BoxTitle:   lipgloss.NewStyle().Foreground(ColFgDim).Bold(true).Padding(0, 1),
+		BoxTitle: lipgloss.NewStyle().
+			Foreground(ColFgDim).
+			Bold(true).
+			Padding(0, 1),
 
 		Row:    row,
 		RowSel: rowSel,
-		Header: lipgloss.NewStyle().Foreground(ColFgFaint).Padding(0, 1),
+		Header: lipgloss.NewStyle().
+			Foreground(ColFgFaint).
+			Padding(0, 1),
 
-		Tab: lipgloss.NewStyle().Foreground(ColFgDim).Padding(0, 2),
-		TabActive: lipgloss.NewStyle().Foreground(acc).Padding(0, 2).
-			Border(lipgloss.Border{Bottom: "━"}, false, false, true, false).
-			BorderForeground(acc),
+		Tab: lipgloss.NewStyle().
+			Foreground(ColFgDim).
+			Padding(0, 2),
+		TabActive: lipgloss.NewStyle().
+			Foreground(acc).
+			Padding(0, 2),
 
 		StatusBar: lipgloss.NewStyle().
-			Background(acc).Foreground(ColBg).Bold(true),
+			Background(acc).
+			Foreground(ColBg).
+			Bold(true),
 
-		KeyHint: lipgloss.NewStyle().Foreground(ColFgFaint),
-		KeyCap:  lipgloss.NewStyle().Background(ColBg3).Foreground(ColFgDim).Padding(0, 1),
+		KeyHint: lipgloss.NewStyle().
+			Foreground(ColFgFaint),
+		KeyCap: lipgloss.NewStyle().
+			Foreground(ColFgDim).
+			Padding(0, 1),
 
 		Chip: chip, ChipAcc: chipAcc,
 
-		Muted:  lipgloss.NewStyle().Foreground(ColFgDim),
-		Faint:  lipgloss.NewStyle().Foreground(ColFgFaint),
-		Accent: lipgloss.NewStyle().Foreground(acc),
-		OK:     lipgloss.NewStyle().Foreground(ColOk),
-		Info:   lipgloss.NewStyle().Foreground(ColInfo),
-		Warn:   lipgloss.NewStyle().Foreground(ColWarn),
-		Danger: lipgloss.NewStyle().Foreground(ColDanger),
+		Muted: lipgloss.NewStyle().
+			Foreground(ColFgDim),
+		Faint: lipgloss.NewStyle().
+			Foreground(ColFgFaint),
+		Accent: lipgloss.NewStyle().
+			Foreground(acc),
+		OK: lipgloss.NewStyle().
+			Foreground(ColOk),
+		Info: lipgloss.NewStyle().
+			Foreground(ColInfo),
+		Warn: lipgloss.NewStyle().
+			Foreground(ColWarn),
+		Danger: lipgloss.NewStyle().
+			Foreground(ColDanger),
 
-		User:       lipgloss.NewStyle().Foreground(acc),
-		Assistant:  lipgloss.NewStyle().Foreground(ColFgDim),
-		ToolCall:   lipgloss.NewStyle().Foreground(ColInfo),
-		ToolResult: lipgloss.NewStyle().Foreground(ColFgFaint),
-		System:     lipgloss.NewStyle().Foreground(ColWarn),
+		User: lipgloss.NewStyle().
+			Foreground(acc),
+		Assistant: lipgloss.NewStyle().
+			Foreground(ColFgDim),
+		ToolCall: lipgloss.NewStyle().
+			Foreground(ColInfo),
+		ToolResult: lipgloss.NewStyle().
+			Foreground(ColFgFaint),
+		System: lipgloss.NewStyle().
+			Foreground(ColWarn),
 	}
 }
 
@@ -149,6 +178,7 @@ func (s Styles) RoleStyle(role string) lipgloss.Style {
 	case "system":
 		return s.System
 	}
+
 	return s.Muted
 }
 
@@ -165,5 +195,6 @@ func RoleGlyph(role string) string {
 	case "system":
 		return "§"
 	}
+
 	return "·"
 }
