@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -32,7 +33,7 @@ func (a *App) viewSystem(w int) string {
 	sessTile := strings.Builder{}
 	sessTile.WriteString(lipgloss.NewStyle().Foreground(s.ColAccent).Bold(true).Render(fmt.Sprintf("%d", live)))
 	sessTile.WriteString("  " + s.Faint.Render("live\n"))
-	sessTile.WriteString(s.Accent.Render(Spark([]int{1, 2, 2, 3, 3, 4, 3, 4, 5, 4, 5, 5})) + "\n")
+	sessTile.WriteString(s.Accent.Render(s.RenderSpark([]int{1, 2, 2, 3, 3, 4, 3, 4, 5, 4, 5, 5})) + "\n")
 	sessTile.WriteString(s.Faint.Render("arch ") + s.Muted.Render(fmt.Sprintf("%d", archived)) + "  ")
 	sessTile.WriteString(s.Faint.Render("total ") + s.Muted.Render(fmt.Sprintf("%d", len(a.sessions))))
 
@@ -64,10 +65,10 @@ func (a *App) viewSystem(w int) string {
 	storTile.WriteString(s.Faint.Render("swept   ") + s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Swept)))
 
 	tiles := lipgloss.JoinHorizontal(lipgloss.Top,
-		Box(s, "agent", false, tileW, agentTile.String()), "  ",
-		Box(s, "sessions", false, tileW, sessTile.String()), "  ",
-		Box(s, "tokens · total", false, tileW, tokTile.String()), "  ",
-		Box(s, "storage", false, tileW, storTile.String()),
+		s.RenderBox("agent", false, tileW, agentTile.String()), "  ",
+		s.RenderBox("sessions", false, tileW, sessTile.String()), "  ",
+		s.RenderBox("tokens · total", false, tileW, tokTile.String()), "  ",
+		s.RenderBox("storage", false, tileW, storTile.String()),
 	)
 
 	colW := (w - 8) / 3
@@ -78,23 +79,34 @@ func (a *App) viewSystem(w int) string {
 		switch p.Status {
 		case "degraded":
 			statusStyle = s.Warn
-
-		case "down":
+		case "unhealthy", "down":
 			statusStyle = s.Danger
 		}
 
-		line := fmt.Sprintf("%s %-12s %s %s %s",
-			s.Chip.Render(p.Kind),
+		kind := ""
+		if len(p.Types) > 0 {
+			kind = p.Types[0]
+		}
+
+		latency := FormatPrettyDuration(time.Duration(p.Latency))
+		fmt.Fprintf(&plugins, "%s %-12s %s %s %s\n",
+			s.Chip.Render(fmt.Sprintf("%-8s", kind)),
 			p.Name,
-			s.Faint.Render(p.Version),
 			statusStyle.Render("●"),
-			statusStyle.Render(p.Status),
+			statusStyle.Render(fmt.Sprintf("%-10s", p.Status)),
+			s.Faint.Render(latency),
 		)
 
-		plugins.WriteString(line + "\n")
+		if p.Status != "healthy" && p.Message != "" {
+			msg := s.TruncateRunes(p.Message, colW-6)
+			plugins.WriteString("\t" + s.Faint.Render(msg) + "\n")
+		}
+		if p.Action != "" {
+			plugins.WriteString("\t  " + s.Faint.Render("→ ") + s.Warn.Render(s.TruncateRunes(p.Action, colW-8)) + "\n")
+		}
 	}
 
-	plugBox := Box(s, fmt.Sprintf("plugins [%d]", len(a.system.Plugins)), false, colW, plugins.String())
+	plugBox := s.RenderBox(fmt.Sprintf("plugins [%d]", len(a.system.Plugins)), false, colW, "\n"+plugins.String())
 
 	act := strings.Builder{}
 	for _, e := range a.system.RecentLog {
@@ -114,16 +126,32 @@ func (a *App) viewSystem(w int) string {
 			lvlStyle.Render(fmt.Sprintf("%-5s", e.Level)),
 			s.Faint.Render(e.Time),
 			s.Accent.Render(fmt.Sprintf("%-8s", e.Source)),
-			s.Muted.Render(Truncate(e.Message, colW-26)),
+			s.Muted.Render(s.TruncateRunes(e.Message, colW-26)),
 		)
 	}
 	act.WriteString("\n" + s.Accent.Render("›") + " " + s.Faint.Render("tail —follow"))
-	actBox := Box(s, "recent activity", false, colW, act.String())
+	actBox := s.RenderBox("recent activity", false, colW, act.String())
 
-	dagBox := Box(s, "dag · "+a.activeSession().Name, false, colW, a.renderMiniDag())
+	dagBox := s.RenderBox("dag · "+a.activeSession().Name, false, colW, a.renderMiniDag())
 	row2 := lipgloss.JoinHorizontal(lipgloss.Top, plugBox, "  ", actBox, "  ", dagBox)
 
 	return tiles + "\n\n" + row2
+}
+
+func FormatPrettyDuration(d time.Duration) string {
+	switch {
+	case d >= time.Second:
+		return fmt.Sprintf("%.2fs", d.Seconds())
+
+	case d >= time.Millisecond:
+		return fmt.Sprintf("%.2fms", float64(d)/float64(time.Millisecond))
+
+	case d >= time.Microsecond:
+		return fmt.Sprintf("%.2fµs", float64(d)/float64(time.Microsecond))
+
+	default:
+		return fmt.Sprintf("%dns", d.Nanoseconds())
+	}
 }
 
 func (a *App) renderMiniDag() string {

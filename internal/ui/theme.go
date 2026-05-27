@@ -148,7 +148,6 @@ func NewStyles(t Theme) Styles {
 		Padding(0, 1)
 	rowSel := row.
 		Foreground(ColFg).
-		Background(t.RowSelBg).
 		BorderLeft(true).
 		BorderStyle(lipgloss.Border{Left: "▍"}).
 		BorderForeground(acc)

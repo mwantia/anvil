@@ -64,6 +64,7 @@ func NewApp(client forge.Client) *App {
 	}
 	app.sessionsState.expanded = map[string]bool{}
 	app.sessionsState.sessionRefs = map[string][]forge.Ref{}
+	app.logState.treeExp = map[int]bool{}
 	app.reloadAll()
 
 	return app
@@ -75,6 +76,11 @@ func (a *App) reloadAll() {
 
 	if s, err := a.client.Sessions(ctx); err == nil {
 		a.sessions = s
+		for _, ss := range s {
+			if _, exists := a.sessionsState.expanded[ss.ID]; !exists {
+				a.sessionsState.expanded[ss.ID] = true
+			}
+		}
 	}
 
 	// Refresh refs for any currently expanded sessions.
@@ -282,7 +288,7 @@ func (a *App) screenHints() [][2]string {
 
 	case ScreenLog:
 		hints = [][2]string{
-			{"↑↓", "walk"}, {"enter", "expand"},
+			{"↑↓", "walk"}, {"→/d", "calls"}, {"←", "collapse"}, {"enter", "body"},
 			{"e", "edit·fork"}, {"c", "checkout"}, {"y", "yank"}, {"⌫", "back"},
 		}
 

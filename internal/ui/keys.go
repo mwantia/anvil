@@ -46,8 +46,8 @@ func DefaultKeys() KeyMap {
 		Filter:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 		Follow:   key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "follow")),
 
-		ExpandAll:   key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "expand all")),
-		CollapseAll: key.NewBinding(key.WithKeys("J"), key.WithHelp("J", "collapse all")),
+		ExpandAll:   key.NewBinding(key.WithKeys("D"), key.WithHelp("D", "toggle all")),
+		CollapseAll: key.NewBinding(key.WithKeys(), key.WithHelp("", "")),
 
 		Help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Quit: key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),

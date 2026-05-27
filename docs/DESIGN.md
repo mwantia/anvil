@@ -15,7 +15,7 @@ This document captures the current layout, palette, and component conventions fo
 │  <body — varies per screen>                                                  │
 │                                                                              │
 ├─ KeyHints ───────────────────────────────────────────────────────────────────┤
-│ ↑↓ select   enter log   →/d expand   ←  collapse   K/J all   …   1-3 tab  q │
+│ ↑↓ select   enter log   →/d expand   ←  collapse   K/J all   …   1-3 tab  q  │
 ├─ StatusBar (amber) ──────────────────────────────────────────────────────────┤
 │   anvil v…   session <name>   HEAD main                            15:04:05  │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -37,16 +37,16 @@ Side-by-side layout: 70 % left (session tree) / 30 % right (detail panel).
 │   ID         NAME           TITLE              PLUGINS MSGS  UPDATED          │  │ ID       <hash>   │
 │ ───────────────────────────────────────────────────────────────────────────── │  │ Name     <name>   │
 │ ▸ <id>       <name>         <title>            <plug>   12  2006-01-02 15:04  │  │ Title    …        │
-│ ▾ <id>       <name>         <title>            <plug>    4  2006-01-02 15:04  │  │ Model    …        │
-│     ·  <hash>       HEAD → main                                               │  │ Parent   …        │
-│     ·  <hash>       main                                                      │  │ Created  …        │
-│     ·  <hash>       fork-abc123                                               │  │ Updated  …        │
-│ ▸ <id>       <name>         <title>            <plug>    1  2006-01-02 15:04  │  │                   │
-└───────────────────────────────────────────────────────────────────────────────┘  │ MESSAGES · N      │
-                                                                                   │   user     ██░ 3  │
-                                                                                   │   assistant ███ 4 │
-                                                                                   │   tool_call █░░ 1 │
-                                                                                   │   tool_result …   │
+│     ·  <hash>       HEAD → main                                               │  │ Model    …        │
+│     ·  <hash>       main                                                      │  │ Parent   …        │
+│ ▾ <id>       <name>         <title>            <plug>    4  2006-01-02 15:04  │  │ Created  …        │  
+│     ·  <hash>       HEAD → main                                               │  │ Updated  …        │
+│     ·  <hash>       main                                                      │  │                   │
+│     ·  <hash>       fork-abc123                                               │  │ MESSAGES · N      │
+│ ▸ <id>       <name>         <title>            <plug>    1  2006-01-02 15:04  │  │   user     ██░ 3  │
+│     ·  <hash>       HEAD → main                                               │  │   assistant ███ 4 │
+│     ·  <hash>       main                                                      │  │   tool_call █░░ 1 │
+└───────────────────────────────────────────────────────────────────────────────┘  │   tool_result …   │
                                                                                    │                   │
                                                                                    │ COST              │
                                                                                    │ Estimated $0.0014 │

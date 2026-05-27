@@ -176,19 +176,19 @@ func (a *App) viewResources(w int) string {
 
 	scopeBody.WriteString("\n")
 	scopeBody.WriteString(s.Faint.Render("STORE") + "\n")
-	scopeBody.WriteString(KV(s, "backend", s.Muted.Render(a.system.Storage.Backend), 9) + "\n")
-	scopeBody.WriteString(KV(s, "objects", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Objects)), 9) + "\n")
-	scopeBody.WriteString(KV(s, "refs", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Refs)), 9) + "\n")
-	scopeBody.WriteString(KV(s, "swept", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Swept)), 9))
-	scopeBox := Box(s, "scope", false, scopeW, scopeBody.String())
+	scopeBody.WriteString(s.RenderKeyValue("backend", s.Muted.Render(a.system.Storage.Backend), 9) + "\n")
+	scopeBody.WriteString(s.RenderKeyValue("objects", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Objects)), 9) + "\n")
+	scopeBody.WriteString(s.RenderKeyValue("refs", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Refs)), 9) + "\n")
+	scopeBody.WriteString(s.RenderKeyValue("swept", s.Muted.Render(fmt.Sprintf("%d", a.system.Storage.Swept)), 9))
+	scopeBox := s.RenderBox("scope", false, scopeW, scopeBody.String())
 
 	filtered := a.filteredResources()
 	listBody := strings.Builder{}
 	listBody.WriteString(s.Header.Render(fmt.Sprintf("%-26s %4s %8s %s", "PATH", "VER", "SIZE", "SCOPE")) + "\n")
-	listBody.WriteString(Hr(s, listW-4) + "\n")
+	listBody.WriteString(s.RenderHorizontalDashedRule(listW-4) + "\n")
 	for i, r := range filtered {
 		line := fmt.Sprintf("%-26s %4s %8s %s",
-			Truncate(r.Path, 26),
+			s.TruncateRunes(r.Path, 26),
 			fmt.Sprintf("v%d", r.Versions),
 			r.Size,
 			s.Chip.Render(string(r.Scope)),
@@ -206,17 +206,17 @@ func (a *App) viewResources(w int) string {
 		listBody.WriteString("\n" + s.Faint.Render("  no resources in scope "+a.resourcesState.scope))
 	}
 
-	listBox := Box(s, fmt.Sprintf("resources [%d]", len(filtered)), true, listW, listBody.String())
+	listBox := s.RenderBox(fmt.Sprintf("resources [%d]", len(filtered)), true, listW, listBody.String())
 
 	r := a.currentResource()
 	detail := strings.Builder{}
-	detail.WriteString(KV(s, "path", s.Muted.Render(r.Path), 9) + "\n")
-	detail.WriteString(KV(s, "scope", s.Chip.Render(string(r.Scope)), 9) + "\n")
-	detail.WriteString(KV(s, "mime", s.Muted.Render(r.MIME), 9) + "\n")
-	detail.WriteString(KV(s, "versions", s.Muted.Render(fmt.Sprintf("%d", r.Versions)), 9) + "\n")
-	detail.WriteString(KV(s, "size", s.Muted.Render(r.Size), 9) + "\n")
-	detail.WriteString(KV(s, "updated", s.Muted.Render(r.Updated.Format("2006-01-02 15:04:05")), 9) + "\n")
-	detail.WriteString(KV(s, "HEAD", s.Accent.Render(r.HEAD), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("path", s.Muted.Render(r.Path), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("scope", s.Chip.Render(string(r.Scope)), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("mime", s.Muted.Render(r.MIME), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("versions", s.Muted.Render(fmt.Sprintf("%d", r.Versions)), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("size", s.Muted.Render(r.Size), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("updated", s.Muted.Render(r.Updated.Format("2006-01-02 15:04:05")), 9) + "\n")
+	detail.WriteString(s.RenderKeyValue("HEAD", s.Accent.Render(r.HEAD), 9) + "\n")
 	detail.WriteString("\n")
 
 	detail.WriteString(s.Faint.Render(fmt.Sprintf("HISTORY · %d of %d", len(r.History), r.Versions)) + "\n")
@@ -231,7 +231,7 @@ func (a *App) viewResources(w int) string {
 			marker, h.Version,
 			s.Faint.Render(h.Hash),
 			s.Faint.Render(h.Date.Format("2006-01-02 15:04")),
-			s.Muted.Render(Truncate(h.Delta, detailW-32)),
+			s.Muted.Render(s.TruncateRunes(h.Delta, detailW-32)),
 		)
 
 		detail.WriteString(line + "\n")
@@ -243,7 +243,7 @@ func (a *App) viewResources(w int) string {
 		detail.WriteString(s.Muted.Render(r.Summary))
 	}
 
-	detailBox := Box(s, r.Name, false, detailW, detail.String())
+	detailBox := s.RenderBox(r.Name, false, detailW, detail.String())
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, scopeBox, "  ", listBox, "  ", detailBox)
 }

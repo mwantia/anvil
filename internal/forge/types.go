@@ -28,14 +28,22 @@ type Session struct {
 
 // Message is a single node in the session's Merkle DAG.
 type Message struct {
-	Hash    string
-	Role    Role
-	Date    time.Time
-	Refs    []string
-	TokIn   int
-	TokOut  int
-	Preview string
-	Body    []string
+	Hash      string
+	Role      Role
+	Date      time.Time
+	Refs      []string
+	TokIn     int
+	TokOut    int
+	Preview   string
+	Body      []string
+	ToolCalls []ToolCall
+}
+
+// ToolCall is a single tool invocation embedded in an assistant message.
+type ToolCall struct {
+	ID        string
+	Name      string
+	Arguments map[string]any
 }
 
 // Role classifies a message node.
@@ -110,8 +118,14 @@ type System struct {
 }
 
 type Plugin struct {
-	Name, Kind, Version string
-	Status              string
+	Name    string
+	Types   []string
+	Version string
+	Status  string
+	Code    string
+	Message string
+	Action  string
+	Latency int64
 }
 
 type LogLine struct {

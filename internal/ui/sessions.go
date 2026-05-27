@@ -24,8 +24,8 @@ type sessionsState struct {
 	cursor       int
 	offset       int // viewport scroll offset
 	showArchived bool
-	expanded     map[string]bool         // session ID → expanded
-	sessionRefs  map[string][]forge.Ref  // session ID → refs (lazy-loaded on expand)
+	expanded     map[string]bool        // session ID → expanded
+	sessionRefs  map[string][]forge.Ref // session ID → refs (lazy-loaded on expand)
 }
 
 func (a *App) visibleSessions() []forge.Session {
@@ -183,19 +183,27 @@ func (a *App) updateSessions(m tea.KeyMsg) {
 		}
 		a.syncActiveRefs()
 
-	case key.Matches(m, a.keys.ExpandAll):
+	case key.Matches(m, a.keys.ExpandAll): // D = smart toggle all
+		allExpanded := true
 		for _, ss := range a.visibleSessions() {
-			a.expandSession(ss.ID)
+			if !a.sessionsState.expanded[ss.ID] {
+				allExpanded = false
+				break
+			}
 		}
-
-	case key.Matches(m, a.keys.CollapseAll):
-		curSession := 0
-		if len(items) > 0 {
-			curSession = items[cur].sessionIdx
+		if allExpanded {
+			curSession := 0
+			if len(items) > 0 {
+				curSession = items[cur].sessionIdx
+			}
+			a.sessionsState.expanded = map[string]bool{}
+			a.sessionsState.cursor = curSession
+			a.sessionsState.offset = 0
+		} else {
+			for _, ss := range a.visibleSessions() {
+				a.expandSession(ss.ID)
+			}
 		}
-		a.sessionsState.expanded = map[string]bool{}
-		a.sessionsState.cursor = curSession
-		a.sessionsState.offset = 0
 		a.syncActiveRefs()
 
 	case key.Matches(m, a.keys.Enter):
@@ -255,8 +263,16 @@ func (a *App) reloadLogRefs(ref string) {
 
 	if ms, err := a.client.Log(ctx, ss.ID, ref); err == nil {
 		a.messages = ms
-		a.logState.selected = 0
+		a.logState.cursor = 0
+		a.logState.bodyExp = false
 		a.logState.walkRef = ref
+		treeExp := map[int]bool{}
+		for i, msg := range ms {
+			if len(msg.ToolCalls) > 0 {
+				treeExp[i] = true
+			}
+		}
+		a.logState.treeExp = treeExp
 		for i := range a.sessions {
 			if a.sessions[i].ID == ss.ID {
 				a.sessions[i].Messages, a.sessions[i].Counts = countMessages(ms)
@@ -311,7 +327,7 @@ func (a *App) viewSessions(w, h int) string {
 	}
 	headLine := s.Header.Render(fmt.Sprintf("  %-10s %-14s %-*s %-10s %5s  %s",
 		"ID", "NAME", titleW, "TITLE", "PLUGINS", "MSGS", "UPDATED"))
-	treeRows := []string{headLine, Hr(s, leftW-4)}
+	treeRows := []string{headLine, s.RenderHorizontalDashedRule(leftW - 4)}
 
 	end := min(a.sessionsState.offset+viewH, len(items))
 	for i := a.sessionsState.offset; i < end; i++ {
@@ -336,9 +352,9 @@ func (a *App) viewSessions(w, h int) string {
 			}
 			line = glyph + " " + fmt.Sprintf("%-10s %-14s %-*s %-10s %5d  %s%s",
 				shortHash(ss.ID, 10),
-				Truncate(ss.Name, 14),
-				titleW, Truncate(ss.Title, titleW),
-				Truncate(ss.Plugins, 10),
+				s.TruncateRunes(ss.Name, 14),
+				titleW, s.TruncateRunes(ss.Title, titleW),
+				s.TruncateRunes(ss.Plugins, 10),
 				ss.Messages,
 				ss.Updated.Format("2006-01-02 15:04"),
 				archMark,
@@ -362,7 +378,7 @@ func (a *App) viewSessions(w, h int) string {
 		treeRows = append(treeRows, st.Width(leftW-4).Render(line))
 	}
 
-	table := Box(s, fmt.Sprintf("sessions [%d]%s", len(visible), archTag), true, leftW, strings.Join(treeRows, "\n"))
+	table := s.RenderBox(fmt.Sprintf("sessions [%d]%s", len(visible), archTag), true, leftW, strings.Join(treeRows, "\n"))
 	table = fitLines(table, h)
 
 	// Detail panel — session info + optional ref detail when on a ref row.
@@ -378,18 +394,21 @@ func (a *App) viewSessions(w, h int) string {
 
 	detail := strings.Builder{}
 	kvw := 11
-	detail.WriteString(KV(s, "ID", s.Muted.Render(shortHash(ss.ID, 16)), kvw) + "\n")
-	detail.WriteString(KV(s, "Name", s.Accent.Render(ss.Name), kvw) + "\n")
-	detail.WriteString(KV(s, "Title", Truncate(ss.Title, rightW-14), kvw) + "\n")
-	detail.WriteString(KV(s, "Model", s.Muted.Render(ss.Model), kvw) + "\n")
-	detail.WriteString(KV(s, "Parent", s.Info.Render(ss.Parent), kvw) + "\n")
-	detail.WriteString(KV(s, "Created", s.Muted.Render(ss.Created.Format("01-02 15:04")), kvw) + "\n")
-	detail.WriteString(KV(s, "Updated", s.Muted.Render(ss.Updated.Format("01-02 15:04")), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("ID", s.Muted.Render(shortHash(ss.ID, 16)), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Name", s.Accent.Render(ss.Name), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Title", s.TruncateRunes(ss.Title, rightW-14), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Model", s.Muted.Render(ss.Model), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Parent", s.Info.Render(ss.Parent), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Created", s.Muted.Render(ss.Created.Format("01-02 15:04")), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Updated", s.Muted.Render(ss.Updated.Format("01-02 15:04")), kvw) + "\n")
 
 	detail.WriteString("\n")
 	detail.WriteString(s.Faint.Render(fmt.Sprintf("MESSAGES · %d", ss.Messages)) + "\n")
-	for _, role := range []string{"user", "assistant", "tool_call", "tool_result"} {
+	for _, role := range []string{"user", "assistant", "tool", "tool_call", "tool_result", "system"} {
 		n := ss.Counts[role]
+		if n == 0 {
+			continue
+		}
 		bar := miniBar(n, maxCount, 40, s.ColAccent, s.ColRule2)
 		line := fmt.Sprintf("%s %-11s  %s %3d",
 			s.RoleStyle(role).Render(RoleGlyph(role)),
@@ -401,8 +420,8 @@ func (a *App) viewSessions(w, h int) string {
 
 	detail.WriteString("\n")
 	detail.WriteString(s.Faint.Render("COST") + "\n")
-	detail.WriteString(KV(s, "Estimated", s.Accent.Render(fmt.Sprintf("$%.4f", ss.Cost)), kvw) + "\n")
-	detail.WriteString(KV(s, "Tokens", s.Muted.Render(fmt.Sprintf("in=%d out=%d", ss.TokensIn, ss.TokensOut)), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Estimated", s.Accent.Render(fmt.Sprintf("$%.4f", ss.Cost)), kvw) + "\n")
+	detail.WriteString(s.RenderKeyValue("Tokens", s.Muted.Render(fmt.Sprintf("in=%d out=%d", ss.TokensIn, ss.TokensOut)), kvw) + "\n")
 
 	// Append ref detail when cursor is on a ref row.
 	if item.refIdx >= 0 {
@@ -411,13 +430,13 @@ func (a *App) viewSessions(w, h int) string {
 			r := refs[item.refIdx]
 			detail.WriteString("\n")
 			detail.WriteString(s.Faint.Render("REF") + "\n")
-			detail.WriteString(KV(s, "name", refLabel(s, r), kvw) + "\n")
-			detail.WriteString(KV(s, "hash", s.Muted.Render(r.Hash), kvw) + "\n")
-			detail.WriteString(KV(s, "type", s.Muted.Render(refType(r)), kvw) + "\n")
+			detail.WriteString(s.RenderKeyValue("name", refLabel(s, r), kvw) + "\n")
+			detail.WriteString(s.RenderKeyValue("hash", s.Muted.Render(r.Hash), kvw) + "\n")
+			detail.WriteString(s.RenderKeyValue("type", s.Muted.Render(refType(r)), kvw) + "\n")
 		}
 	}
 
-	rightBox := Box(s, ss.Name, false, rightW, detail.String())
+	rightBox := s.RenderBox(ss.Name, false, rightW, detail.String())
 	rightBox = fitLines(rightBox, h)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", rightBox)

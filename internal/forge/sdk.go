@@ -82,14 +82,38 @@ func messageFromSDK(m sdksessions.Message) Message {
 		tokOut = m.Usage.OutputTokens
 	}
 
+	var toolCalls []ToolCall
+	for _, tc := range m.ToolCalls {
+		toolCalls = append(toolCalls, ToolCall{
+			ID:        tc.ID,
+			Name:      tc.Name,
+			Arguments: tc.Arguments,
+		})
+	}
+
+	// For assistant messages with only tool calls and no text content,
+	// synthesise a preview from the tool names.
+	if preview == "" && len(toolCalls) > 0 {
+		names := make([]string, 0, len(toolCalls))
+		for _, tc := range toolCalls {
+			names = append(names, tc.Name)
+		}
+		preview = strings.Join(names, ", ")
+		r := []rune(preview)
+		if len(r) > 80 {
+			preview = string(r[:77]) + "…"
+		}
+	}
+
 	return Message{
-		Hash:    shortH(m.Hash, 12),
-		Role:    Role(m.Role),
-		Date:    m.CreatedAt,
-		Preview: preview,
-		Body:    lines,
-		TokIn:   tokIn,
-		TokOut:  tokOut,
+		Hash:      shortH(m.Hash, 12),
+		Role:      Role(m.Role),
+		Date:      m.CreatedAt,
+		Preview:   preview,
+		Body:      lines,
+		TokIn:     tokIn,
+		TokOut:    tokOut,
+		ToolCalls: toolCalls,
 	}
 }
 
@@ -363,11 +387,25 @@ func (c *SDKClient) ResourceDetail(ctx context.Context, path, name string) (Reso
 func (c *SDKClient) System(ctx context.Context) (System, error) {
 	status, _ := c.api.Resources.Status(ctx)
 	objCount, _ := c.api.System.DagObjectsCount(ctx, sdksystem.DagObjectsCountRequest{})
+	health, _ := c.api.System.Health(ctx, sdksystem.SystemHealthRequest{})
 
 	var sys System
 	sys.Storage.Backend = status.Backend
 	sys.Storage.Objects = objCount.Count
 	sys.Agent.HTTP = c.api.GetAddress()
+
+	sys.Plugins = make([]Plugin, 0, len(health.Plugins))
+	for _, p := range health.Plugins {
+		sys.Plugins = append(sys.Plugins, Plugin{
+			Name:    p.Name,
+			Types:   p.Types,
+			Status:  p.Status,
+			Code:    p.Code,
+			Message: p.Message,
+			Action:  p.Action,
+			Latency: p.Latency,
+		})
+	}
 
 	return sys, nil
 }
